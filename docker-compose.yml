@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  cognitive-monitor:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DEBUG=False
+      - CLIQ_BOT_TOKEN=${CLIQ_BOT_TOKEN}
+      - CLIQ_WEBHOOK_URL=${CLIQ_WEBHOOK_URL}
+      - DATABASE_URL=sqlite:///./cognitive_monitor.db
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Add Redis for production caching
+  # redis:
+  #   image: redis:alpine
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
