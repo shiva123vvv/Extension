@@ -3,8 +3,10 @@ from contextlib import asynccontextmanager
 import asyncio
 import logging
 import uvicorn
+from datetime import datetime
 
 from bots.cliq_bot import CliqBot
+from bots.alert_bot import AlertBot
 from services.cliq_monitor import CliqMonitor
 from services.calendar_monitor import CalendarMonitor
 from services.email_monitor import EmailMonitor
@@ -25,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Global services
 cliq_bot = None
+alert_bot = None
 cliq_monitor = None
 calendar_monitor = None
 email_monitor = None
@@ -38,8 +41,9 @@ message_analyzer = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global cliq_bot, cliq_monitor, calendar_monitor, email_monitor, zoho_analytics
-    global alert_service, stress_detector, workload_analyzer, pattern_detector, message_analyzer
+    global cliq_bot, alert_bot, cliq_monitor, calendar_monitor, email_monitor
+    global zoho_analytics, alert_service, stress_detector, workload_analyzer
+    global pattern_detector, message_analyzer
     
     logger.info("🚀 Starting Team Cognitive Load Monitor...")
     
@@ -59,13 +63,15 @@ async def lifespan(app: FastAPI):
         calendar_monitor = CalendarMonitor(alert_service, workload_analyzer)
         email_monitor = EmailMonitor(alert_service, stress_detector)
         
-        # Initialize Cliq bot
+        # Initialize bots
         cliq_bot = CliqBot(alert_service, workload_analyzer, stress_detector)
+        alert_bot = AlertBot(alert_service)
         
         # Start monitoring in background
         asyncio.create_task(cliq_monitor.start_monitoring())
         asyncio.create_task(calendar_monitor.start_monitoring())
         asyncio.create_task(email_monitor.start_monitoring())
+        asyncio.create_task(alert_bot.send_proactive_alerts())
         
         logger.info("✅ All services started successfully")
         
@@ -93,18 +99,21 @@ async def root():
     return {
         "message": "Team Cognitive Load Monitor API", 
         "status": "running",
-        "version": "2.0.0"
+        "version": "2.0.0",
+        "timestamp": datetime.now().isoformat()
     }
 
 @app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
         "services": {
             "cliq_monitor": cliq_monitor.is_running if cliq_monitor else False,
             "calendar_monitor": calendar_monitor.is_running if calendar_monitor else False,
             "email_monitor": email_monitor.is_running if email_monitor else False,
-            "alert_service": alert_service is not None
+            "alert_service": alert_service is not None,
+            "cliq_bot": cliq_bot is not None
         }
     }
 
@@ -113,8 +122,14 @@ async def cliq_webhook(request: Request):
     """Webhook endpoint for Zoho Cliq events"""
     try:
         data = await request.json()
-        await cliq_bot.handle_webhook(data)
-        return {"status": "processed", "message": "Webhook received successfully"}
+        logger.info(f"📥 Received Cliq webhook: {data.get('type', 'unknown')}")
+        
+        if cliq_bot:
+            await cliq_bot.handle_webhook(data)
+            return {"status": "processed", "message": "Webhook received successfully"}
+        else:
+            return {"status": "error", "message": "Cliq bot not initialized"}
+            
     except Exception as e:
         logger.error(f"Error processing Cliq webhook: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -123,11 +138,14 @@ async def cliq_webhook(request: Request):
 async def get_team_metrics(team_id: str):
     """Get cognitive load metrics for a team"""
     try:
+        if not cliq_monitor:
+            raise HTTPException(status_code=503, detail="Service unavailable")
+            
         metrics = await cliq_monitor.get_team_metrics(team_id)
         return {
             "team_id": team_id,
             "metrics": metrics,
-            "timestamp": asyncio.get_event_loop().time()
+            "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"Error getting team metrics: {e}")
@@ -137,11 +155,15 @@ async def get_team_metrics(team_id: str):
 async def get_team_alerts(team_id: str, limit: int = 20):
     """Get recent alerts for a team"""
     try:
+        if not alert_service:
+            raise HTTPException(status_code=503, detail="Service unavailable")
+            
         alerts = await alert_service.get_team_alerts(team_id, limit)
         return {
             "team_id": team_id,
             "alerts": alerts,
-            "total": len(alerts)
+            "total": len(alerts),
+            "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         logger.error(f"Error getting team alerts: {e}")
@@ -151,10 +173,34 @@ async def get_team_alerts(team_id: str, limit: int = 20):
 async def get_workload_analysis(team_id: str):
     """Get detailed workload analysis for a team"""
     try:
+        if not workload_analyzer:
+            raise HTTPException(status_code=503, detail="Service unavailable")
+            
         analysis = await workload_analyzer.get_team_analysis(team_id)
-        return analysis
+        return {
+            "team_id": team_id,
+            "analysis": analysis,
+            "timestamp": datetime.now().isoformat()
+        }
     except Exception as e:
         logger.error(f"Error getting workload analysis: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/users/{user_id}/activity")
+async def get_user_activity(user_id: str):
+    """Get activity report for a specific user"""
+    try:
+        if not cliq_monitor:
+            raise HTTPException(status_code=503, detail="Service unavailable")
+            
+        report = await cliq_monitor.get_user_activity_report(user_id)
+        return {
+            "user_id": user_id,
+            "report": report,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting user activity: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":
@@ -162,5 +208,6 @@ if __name__ == "__main__":
         "main:app",
         host=settings.API_HOST,
         port=settings.API_PORT,
-        reload=settings.DEBUG
+        reload=settings.DEBUG,
+        log_level="info"
     )
