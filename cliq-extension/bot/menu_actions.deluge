@@ -1,0 +1,21 @@
+action = param.get("action");
+
+if (action == "TEAM_HEALTH")
+{
+    // You can reuse the /teamhealth backend
+    payload = Map();
+    payload.put("source_user_id", param.get("user").get("id"));
+
+    response = invokeurl
+    [
+        url         : "https://your-domain.com/api/cliq/command/teamhealth"
+        type        : POST
+        contentType : "application/json"
+        body        : payload.toString()
+    ];
+
+    text = response.get("text");
+    return {"text": text};
+}
+
+return {"text": "Unknown action."};

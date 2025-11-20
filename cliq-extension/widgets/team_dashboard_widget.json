@@ -1,0 +1,25 @@
+{
+  "name": "Team Cognitive Load Dashboard",
+  "type": "home",
+  "title": "Team Cognitive Load Monitor",
+  "description": "Shows team stress, overload, and message patterns.",
+  "size": "large",
+  "version": "1.0",
+  "elements": [
+    {
+      "type": "text",
+      "name": "header",
+      "label": "Header"
+    },
+    {
+      "type": "text",
+      "name": "team_score",
+      "label": "Team Score"
+    },
+    {
+      "type": "table",
+      "name": "members_table",
+      "label": "Members Table"
+    }
+  ]
+}

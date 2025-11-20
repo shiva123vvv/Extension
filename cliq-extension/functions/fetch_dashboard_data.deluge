@@ -1,0 +1,63 @@
+response = invokeurl
+[
+    url  : "https://your-domain.com/api/widget/team-summary"
+    type : GET
+];
+
+// response: { teamScore, members[] }
+
+sections = List();
+
+// Title
+titleSec = Map();
+titleSec.put("type", "title");
+titleSec.put("text", "Team Cognitive Load Monitor");
+sections.add(titleSec);
+
+// Team score
+scoreSec = Map();
+scoreSec.put("type", "text");
+scoreSec.put("text", "Team Stress Index: " + response.get("teamScore").toString() + "/100");
+sections.add(scoreSec);
+
+// Members table
+members = response.get("members");
+if (members != null && members.size() > 0)
+{
+    tableSec = Map();
+    tableSec.put("type", "table");
+
+    headers = List();
+    headers.add("Member");
+    headers.add("Score");
+    headers.add("Status");
+    headers.add("Messages");
+    headers.add("Late-night");
+
+    rows = List();
+    for each m in members
+    {
+        row = List();
+        row.add(m.get("name"));
+        row.add(m.get("stressScore").toString() + "/100");
+        row.add(m.get("status"));
+        row.add(m.get("totalMessages").toString());
+        row.add(m.get("lateNightMessages").toString());
+        rows.add(row);
+    }
+
+    tableSec.put("headers", headers);
+    tableSec.put("rows", rows);
+    sections.add(tableSec);
+}
+else
+{
+    noData = Map();
+    noData.put("type", "text");
+    noData.put("text", "No data yet. Start chatting to see cognitive load metrics.");
+    sections.add(noData);
+}
+
+widgetResponse = Map();
+widgetResponse.put("sections", sections);
+return widgetResponse;

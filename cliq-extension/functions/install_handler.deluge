@@ -1,0 +1,5 @@
+// Called when extension is installed
+msg = "✅ Team Cognitive Load Monitor installed.\n\n";
+msg = msg + "Add the widget to your Cliq home, and use `/teamhealth` or `/mystress` to get started.";
+
+return {"text": msg};

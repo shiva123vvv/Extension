@@ -1,0 +1,30 @@
+user = param.get("user");
+channel = param.get("channel");
+message = param.get("message");
+
+if (user != null && message != null)
+{
+    user_id = user.get("id");
+    user_name = user.get("first_name") + " " + user.get("last_name");
+    channel_id = if(channel != null, channel.get("id"), "direct");
+    channel_name = if(channel != null, channel.get("name"), "Direct");
+
+    payload = Map();
+    payload.put("type", "message");
+    payload.put("user_id", user_id);
+    payload.put("user_name", user_name);
+    payload.put("channel_id", channel_id);
+    payload.put("channel_name", channel_name);
+    payload.put("text", message.get("text"));
+    payload.put("ts", message.get("time"));
+
+    response = invokeurl
+    [
+        url         : "https://your-domain.com/api/cliq/webhook"
+        type        : POST
+        contentType : "application/json"
+        body        : payload.toString()
+    ];
+
+    info response;
+}

@@ -1,0 +1,37 @@
+response = invokeurl
+[
+    url  : "https://your-domain.com/api/widget/team-summary"
+    type : GET
+];
+
+teamScore = response.get("teamScore");
+members = response.get("members");
+
+text = "📊 Daily Cognitive Load Digest\n\n";
+text = text + "Team Stress Index: " + teamScore.toString() + "/100\n\n";
+
+if (members != null && members.size() > 0)
+{
+    count = 0;
+    for each m in members
+    {
+        count = count + 1;
+        if (count > 5)
+        {
+            break;
+        }
+        text = text + count.toString() + ". " + m.get("name") + " – " + m.get("stressScore").toString() + "/100 (" + m.get("status") + ")\n";
+    }
+}
+else
+{
+    text = text + "No activity data for today yet.";
+}
+
+digestChannelId = "channel_id_here";
+
+messageMap = Map();
+messageMap.put("text", text);
+
+post = zoho.cliq.postToChannel(digestChannelId, messageMap);
+info post;

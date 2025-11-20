@@ -1,0 +1,33 @@
+response = invokeurl
+[
+    url  : "https://your-domain.com/api/widget/team-summary"
+    type : GET
+];
+
+teamScore = response.get("teamScore");
+members = response.get("members");
+
+criticalList = List();
+if (members != null)
+{
+    for each m in members
+    {
+        if (m.get("status") == "CRITICAL")
+        {
+            criticalList.add(m.get("name"));
+        }
+    }
+}
+
+text = "Team Stress Index: " + teamScore.toString() + "/100\n";
+
+if (criticalList.size() > 0)
+{
+    text = text + "🔥 Critical: " + criticalList.toString(", ") + "\n";
+}
+else
+{
+    text = text + "✅ No critical overload members.\n";
+}
+
+return {"text": text};
