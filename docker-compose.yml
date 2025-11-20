@@ -20,8 +20,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - "description=Team Cognitive Load Monitor"
+      - "version=2.0.0"
 
-  # Add Redis for production caching
+  # Redis for production (optional)
   # redis:
   #   image: redis:alpine
   #   ports:
