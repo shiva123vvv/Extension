@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cognitive Load Monitor</title>
+
+    <!-- CSS FILE -->
+    <link rel="stylesheet" href="../styles/cognitive-dashboard.css">
+</head>
+
+<body>
+    <div class="cognitive-dashboard">
+
+        <!-- TEAM OVERVIEW -->
+        <div class="dashboard-section team-overview">
+            <h2>🧠 Team Cognitive Health</h2>
+            <div class="health-grid" id="teamHealthGrid"></div>
+        </div>
+
+        <!-- ALERTS PANEL -->
+        <div class="dashboard-section alerts-panel">
+            <h3>🚨 Active Alerts</h3>
+            <div class="alerts-container" id="alertsContainer"></div>
+        </div>
+
+        <!-- COGNITIVE WEATHER MAP -->
+        <div class="dashboard-section weather-map">
+            <h3>🌤️ Cognitive Weather</h3>
+            <div class="weather-grid" id="weatherGrid"></div>
+        </div>
+
+        <!-- PREDICTIVE INSIGHTS -->
+        <div class="dashboard-section insights">
+            <h3>🔮 Predictive Insights</h3>
+            <div class="insights-list" id="insightsList"></div>
+        </div>
+
+        <!-- WORKLOAD DISTRIBUTION -->
+        <div class="dashboard-section workload">
+            <h3>⚖️ Workload Balance</h3>
+            <div class="workload-chart" id="workloadChart"></div>
+        </div>
+
+    </div>
+
+    <!-- JS FILE -->
+    <script src="dashboard.js"></script>
+</body>
+</html>
