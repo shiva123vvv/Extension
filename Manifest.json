@@ -1,43 +1,28 @@
 {
   "manifest_version": 3,
   "name": "Team Cognitive Load Monitor - Zoho Cliq",
-  "version": "2.0",
+  "version": "1.0",
   "description": "AI-powered team stress, overload, and productivity monitoring",
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting",
-    "notifications",
-    "alarms"
+    "activeTab"
   ],
   "host_permissions": [
     "https://cliq.zoho.com/*",
     "https://*.zoho.com/*"
   ],
   "background": {
-    "service_worker": "src/background/background.js"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["https://cliq.zoho.com/*"],
-      "js": [
-        "src/content/zoho-cliq-integration.js",
-        "src/content/cognitive-monitor.js",
-        "src/content/ai-analyzer.js"
-      ],
-      "css": ["src/styles/cognitive-dashboard.css"]
+      "js": ["content.js"],
+      "css": ["styles.css"]
     }
   ],
-  "web_accessible_resources": [{
-    "resources": [
-      "src/dashboard/dashboard.html",
-      "src/styles/*",
-      "src/assets/*"
-    ],
-    "matches": ["https://cliq.zoho.com/*"]
-  }],
   "action": {
-    "default_popup": "src/popup/dashboard-popup.html",
+    "default_popup": "popup.html",
     "default_title": "Cognitive Load Monitor"
   }
 }
