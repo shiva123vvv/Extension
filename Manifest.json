@@ -6,7 +6,12 @@
   
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icon.png"
+    "default_title": "Cognitive Load Monitor",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png", 
+      "128": "icon.png"
+    }
   },
 
   "permissions": [
@@ -22,11 +27,18 @@
   "background": {
     "service_worker": "background.js"
   },
+  
   "content_scripts": [
-  {
-    "matches": ["https://cliq.zoho.com/*"],
-    "js": ["content.js"]
+    {
+      "matches": ["https://cliq.zoho.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
   }
-]
-
 }
