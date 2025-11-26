@@ -1,3 +1,3 @@
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("Cognitive Load Monitor Installed");
+  console.log("Background service worker loaded");
 });

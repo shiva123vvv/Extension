@@ -1,5 +1,7 @@
-console.log("Cognitive Load Monitor content script loaded");
+console.log("Content script loaded on Cliq");
 
-// Example: read messages on Cliq page
-let messages = document.querySelectorAll(".message_text");
-messages.forEach(m => console.log(m.innerText));
+// Example: read messages from chat
+setInterval(() => {
+  let msgs = document.querySelectorAll(".message_text");
+  msgs.forEach(m => console.log("Found message:", m.innerText));
+}, 2000);

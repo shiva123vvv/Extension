@@ -1,3 +1,3 @@
 document.getElementById("scan").onclick = () => {
-  chrome.runtime.sendMessage({ action: "scan" });
+  document.getElementById("result").innerText = "Scanning...";
 };

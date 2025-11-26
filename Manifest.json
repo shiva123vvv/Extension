@@ -21,5 +21,12 @@
 
   "background": {
     "service_worker": "background.js"
+  },
+  "content_scripts": [
+  {
+    "matches": ["https://cliq.zoho.com/*"],
+    "js": ["content.js"]
   }
+]
+
 }
