@@ -1,152 +1,223 @@
 document.addEventListener('DOMContentLoaded', function() {
     const scanButton = document.getElementById('scan');
-    const resultDiv = document.getElementById('result');
-    const loadingDiv = document.getElementById('loading');
-    const errorDiv = document.getElementById('error');
-    const metricsDiv = document.getElementById('metrics');
-    const recommendationDiv = document.getElementById('recommendation');
+    const resultElement = document.getElementById('result');
+    const loadingElement = document.getElementById('loading');
+    const clearDataLink = document.getElementById('clearData');
+    
+    // Initialize the popup
+    initializePopup();
 
     scanButton.addEventListener('click', async function() {
-        // Reset UI
+        if (!hasConsent()) {
+            showConsentDialog();
+            return;
+        }
+        
+        await performScan();
+    });
+
+    clearDataLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        clearAllData();
+    });
+
+    function initializePopup() {
+        if (!hasConsent()) {
+            showConsentDialog();
+        } else {
+            // Show last scan if available
+            loadLastScan();
+        }
+    }
+
+    function hasConsent() {
+        return localStorage.getItem('cognitiveLoadConsent') === 'true';
+    }
+
+    function showConsentDialog() {
         scanButton.disabled = true;
-        loadingDiv.style.display = 'block';
-        resultDiv.style.display = 'none';
-        errorDiv.style.display = 'none';
+        resultElement.innerHTML = `
+            <div class="consent-dialog">
+                <h3>🔒 Privacy First</h3>
+                <p>Before we start, please review how we handle your data:</p>
+                <ul>
+                    <li>✅ All analysis happens in your browser</li>
+                    <li>✅ No messages are sent to external servers</li>
+                    <li>✅ Only anonymous metrics are stored</li>
+                    <li>✅ You can delete all data anytime</li>
+                </ul>
+                <p>By continuing, you agree to our <a href="privacy.html" target="_blank">Privacy Policy</a> and <a href="terms.html" target="_blank">Terms of Service</a>.</p>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button id="acceptConsent" style="background: #27ae60; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-right: 10px; cursor: pointer;">I Understand & Agree</button>
+                    <button id="declineConsent" style="background: #95a5a6; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Cancel</button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('acceptConsent').addEventListener('click', function() {
+            localStorage.setItem('cognitiveLoadConsent', 'true');
+            localStorage.setItem('consentDate', new Date().toISOString());
+            resultElement.innerHTML = '<div class="metric"><p>✅ Consent recorded. You can now scan team chats.</p></div>';
+            scanButton.disabled = false;
+        });
+
+        document.getElementById('declineConsent').addEventListener('click', function() {
+            resultElement.innerHTML = '<div class="error">❌ Consent required to use this extension.</div>';
+        });
+    }
+
+    async function performScan() {
+        // Show loading state
+        scanButton.disabled = true;
+        scanButton.textContent = "Scanning...";
+        loadingElement.style.display = 'block';
+        resultElement.innerHTML = '';
         
         try {
             // Get current active tab
-            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             
             if (!tab.url.includes('cliq.zoho.com')) {
-                throw new Error('Please navigate to Zoho Cliq first');
+                throw new Error('Please navigate to Zoho Cliq first (https://cliq.zoho.com)');
             }
-
-            // Inject content script and get messages
-            const response = await chrome.tabs.sendMessage(tab.id, {action: "getMessages"});
+            
+            // Send message to content script
+            const response = await chrome.tabs.sendMessage(tab.id, { action: "getMessages" });
             
             if (!response.success) {
-                throw new Error(response.error || 'Failed to extract messages');
+                throw new Error(response.error || 'Failed to extract messages from Cliq');
             }
 
             if (response.messages.length === 0) {
-                throw new Error('No messages found. Please make sure you are on Zoho Cliq.');
+                throw new Error('No messages found. Please ensure you\'re in a team chat with messages.');
             }
-
-            // Send messages for analysis
+            
+            // Send for analysis
             const analysis = await chrome.runtime.sendMessage({
                 action: "analyzeMessages",
                 messages: response.messages
             });
-
+            
             if (!analysis.success) {
                 throw new Error(analysis.error || 'Analysis failed');
             }
-
+            
             // Display results
             displayResults(analysis.data, response.messages.length);
             
         } catch (error) {
             console.error('Scan error:', error);
-            showError(error.message);
+            resultElement.innerHTML = `<div class="error">❌ ${error.message}</div>`;
         } finally {
             scanButton.disabled = false;
-            loadingDiv.style.display = 'none';
+            scanButton.textContent = "🔍 Scan Team Chat";
+            loadingElement.style.display = 'none';
         }
-    });
+    }
 
     function displayResults(data, messageCount) {
-        metricsDiv.innerHTML = '';
+        const stressColor = data.stressLevel > 70 ? '#e74c3c' : data.stressLevel > 40 ? '#f39c12' : '#27ae60';
+        const productivityColor = data.productivityScore > 70 ? '#27ae60' : data.productivityScore > 40 ? '#f39c12' : '#e74c3c';
+        const stressClass = data.stressLevel > 70 ? 'stress-high' : data.stressLevel > 40 ? 'stress-medium' : 'stress-low';
         
-        // Stress Level
-        const stressClass = data.stressLevel > 70 ? 'stress-high' : 
-                           data.stressLevel > 40 ? 'stress-medium' : 'stress-low';
-        
-        metricsDiv.innerHTML += `
-            <div class="metric ${stressClass}">
-                <strong>😰 Stress Level:</strong> ${data.stressLevel.toFixed(1)}%
-                <div style="background: #e0e0e0; height: 10px; border-radius: 5px; margin-top: 5px;">
-                    <div style="background: ${getStressColor(data.stressLevel)}; width: ${data.stressLevel}%; height: 100%; border-radius: 5px;"></div>
+        resultElement.innerHTML = `
+            <div class="result">
+                <h3 style="margin-top: 0; color: #2c3e50;">📊 Analysis Results</h3>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">Based on ${messageCount} messages</p>
+                
+                <div class="metric ${stressClass}">
+                    <strong>😰 Stress Level:</strong> 
+                    <span style="color: ${stressColor}; font-weight: bold; float: right;">${data.stressLevel.toFixed(1)}%</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${data.stressLevel}%; background: ${stressColor};"></div>
+                    </div>
                 </div>
-            </div>
-        `;
-
-        // Productivity Score
-        metricsDiv.innerHTML += `
-            <div class="metric">
-                <strong>📈 Productivity Score:</strong> ${data.productivityScore.toFixed(1)}%
-                <div style="background: #e0e0e0; height: 10px; border-radius: 5px; margin-top: 5px;">
-                    <div style="background: #4CAF50; width: ${data.productivityScore}%; height: 100%; border-radius: 5px;"></div>
-                </div>
-            </div>
-        `;
-
-        // Sentiment
-        const sentimentEmoji = data.sentiment === 'positive' ? '😊' : 
-                              data.sentiment === 'negative' ? '😔' : '😐';
-        metricsDiv.innerHTML += `
-            <div class="metric">
-                <strong>${sentimentEmoji} Overall Sentiment:</strong> ${data.sentiment}
-            </div>
-        `;
-
-        // Message Stats
-        metricsDiv.innerHTML += `
-            <div class="metric">
-                <strong>💬 Messages Analyzed:</strong> ${messageCount}
-            </div>
-        `;
-
-        // Keywords
-        if (data.keywords && data.keywords.length > 0) {
-            metricsDiv.innerHTML += `
+                
                 <div class="metric">
-                    <strong>🔑 Key Topics:</strong> ${data.keywords.slice(0, 5).join(', ')}
+                    <strong>📈 Productivity Score:</strong> 
+                    <span style="color: ${productivityColor}; font-weight: bold; float: right;">${data.productivityScore.toFixed(1)}%</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${data.productivityScore}%; background: ${productivityColor};"></div>
+                    </div>
                 </div>
-            `;
-        }
-
-        // Recommendation
-        recommendationDiv.innerHTML = `
-            <strong>💡 Recommendation:</strong> ${data.recommendation}
+                
+                <div class="metric">
+                    <strong>😊 Overall Sentiment:</strong> 
+                    <span style="float: right; font-weight: bold;">${getSentimentEmoji(data.sentiment)} ${data.sentiment}</span>
+                </div>
+                
+                ${data.keywords && data.keywords.length > 0 ? `
+                    <div class="metric">
+                        <strong>🔑 Key Topics:</strong> 
+                        <div style="margin-top: 5px;">${data.keywords.join(', ')}</div>
+                    </div>
+                ` : ''}
+                
+                <div class="metric" style="background: #e8f4fd; border-left-color: #3498db;">
+                    <strong>💡 Recommendation:</strong>
+                    <div style="margin-top: 8px; font-size: 14px;">${data.recommendation}</div>
+                </div>
+                
+                <div style="margin-top: 15px; font-size: 11px; color: #95a5a6; text-align: center;">
+                    Analysis completed at ${new Date().toLocaleTimeString()}
+                </div>
+            </div>
         `;
 
-        resultDiv.style.display = 'block';
-        
-        // Save to history
-        saveToHistory(data, messageCount);
+        // Save this scan
+        saveScanToHistory(data, messageCount);
     }
 
-    function getStressColor(level) {
-        if (level > 70) return '#ff4444';
-        if (level > 40) return '#ffbb33';
-        return '#00C851';
+    function getSentimentEmoji(sentiment) {
+        switch(sentiment) {
+            case 'positive': return '😊';
+            case 'negative': return '😔';
+            default: return '😐';
+        }
     }
 
-    function showError(message) {
-        errorDiv.textContent = `Error: ${message}`;
-        errorDiv.style.display = 'block';
-    }
-
-    function saveToHistory(analysis, messageCount) {
-        chrome.storage.local.get(['scanHistory'], (result) => {
-            const history = result.scanHistory || [];
-            history.unshift({
-                timestamp: new Date().toISOString(),
-                analysis: analysis,
-                messageCount: messageCount
-            });
-            
-            // Keep only last 50 scans
-            const limitedHistory = history.slice(0, 50);
-            
-            chrome.storage.local.set({scanHistory: limitedHistory});
+    function loadLastScan() {
+        chrome.storage.local.get(['lastScan'], (result) => {
+            if (result.lastScan) {
+                resultElement.innerHTML = `
+                    <div class="metric">
+                        <p>Ready to scan. Last analysis: ${new Date(result.lastScan.timestamp).toLocaleDateString()}</p>
+                    </div>
+                `;
+            }
         });
     }
 
-    // Load previous results if available
-    chrome.storage.local.get(['lastScan'], (result) => {
-        if (result.lastScan) {
-            // Could implement to show last scan results
+    function saveScanToHistory(data, messageCount) {
+        const scanData = {
+            timestamp: new Date().toISOString(),
+            data: data,
+            messageCount: messageCount
+        };
+        
+        chrome.storage.local.set({ lastScan: scanData });
+        
+        // Also add to history
+        chrome.storage.local.get(['scanHistory'], (result) => {
+            const history = result.scanHistory || [];
+            history.unshift(scanData);
+            // Keep only last 20 scans
+            const limitedHistory = history.slice(0, 20);
+            chrome.storage.local.set({ scanHistory: limitedHistory });
+        });
+    }
+
+    function clearAllData() {
+        if (confirm('Are you sure you want to clear all stored data? This includes scan history and settings.')) {
+            localStorage.clear();
+            chrome.storage.local.clear(() => {
+                resultElement.innerHTML = '<div class="metric"><p>✅ All data cleared successfully.</p></div>';
+                // Reset consent to show dialog again
+                localStorage.removeItem('cognitiveLoadConsent');
+                setTimeout(() => {
+                    initializePopup();
+                }, 2000);
+            });
         }
-    });
+    }
 });
