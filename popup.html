@@ -1,208 +1,460 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Cognitive Load Monitor</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitive Load Monitor Pro</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --stress-high: #e74c3c;
+            --stress-medium: #f39c12;
+            --stress-low: #27ae60;
+            --productivity-high: #27ae60;
+            --productivity-medium: #f39c12;
+            --productivity-low: #e74c3c;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --border-color: #e9ecef;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        body {
+            width: 450px;
+            min-height: 300px;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary-color);
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            box-shadow: var(--shadow);
+        }
+
+        .header h2 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 18px;
+        }
+
+        .header p {
+            margin: 5px 0 0 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 5px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .nav-tab.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .button {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+        }
+
+        .button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .button-secondary {
+            background: #95a5a6;
+        }
+
+        .button-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 30px;
+        }
+
+        .result {
+            margin-top: 15px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--shadow);
+        }
+
+        .metric-card.stress-high { border-left-color: var(--stress-high); }
+        .metric-card.stress-medium { border-left-color: var(--stress-medium); }
+        .metric-card.stress-low { border-left-color: var(--stress-low); }
+        .metric-card.productivity-high { border-left-color: var(--productivity-high); }
+        .metric-card.productivity-medium { border-left-color: var(--productivity-medium); }
+        .metric-card.productivity-low { border-left-color: var(--productivity-low); }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            background: #ecf0f1;
+            height: 6px;
+            border-radius: 3px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .insight-card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .insight-card.critical {
+            border-left: 4px solid var(--stress-high);
+            background: #fee;
+        }
+
+        .insight-card.warning {
+            border-left: 4px solid var(--stress-medium);
+            background: #fff3cd;
+        }
+
+        .insight-card.info {
+            border-left: 4px solid var(--primary-color);
+            background: #e8f4fd;
+        }
+
+        .topics-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .topic-tag {
+            background: #e8f4fd;
+            color: var(--primary-color);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .alert-badge {
+            background: var(--stress-high);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            margin: 0 5px;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .real-time-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #27ae60;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .trend-indicator {
+            font-size: 12px;
+            margin-left: 5px;
+        }
+
+        .trend-up { color: #27ae60; }
+        .trend-down { color: #e74c3c; }
+        .trend-stable { color: #f39c12; }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-item {
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            border-left: 3px solid var(--primary-color);
+        }
+    </style>
 </head>
 <body>
-    <div class="header">
-        <h2>🧠 Cognitive Load Monitor</h2>
-        <p>AI-powered team stress & productivity analysis</p>
-        <span class="live-badge">LIVE</span>
-    </div>
-
-    <div class="tab-container">
-        <div class="tab active" data-tab="dashboard">📊 Dashboard</div>
-        <div class="tab" data-tab="analysis">🔍 Deep Analysis</div>
-        <div class="tab" data-tab="trends">📈 Trends</div>
-        <div class="tab" data-tab="settings">⚙️ Settings</div>
-    </div>
-
-    <!-- Dashboard Tab -->
-    <div id="dashboard" class="tab-content active">
-        <div class="metric-card">
-            <h4>🔍 Scan Results</h4>
-            <p>Based on <strong id="messageCount">0</strong> messages from <span id="channelName">#general</span></p>
-            <div class="last-scan" id="lastScanTime">Last scan: Never</div>
+    <div class="container">
+        <div class="header">
+            <h2>🧠 Cognitive Load Monitor Pro</h2>
+            <p>AI-powered team wellness & productivity analytics</p>
         </div>
 
-        <div class="metric-grid">
-            <div class="metric">
-                <div>😰 Stress Level</div>
-                <div class="metric-value" id="stressLevel">0.0%</div>
-                <div class="trend-neutral" id="stressTrend">→</div>
-            </div>
-            <div class="metric">
-                <div>📈 Productivity</div>
-                <div class="metric-value" id="productivityScore">0.0%</div>
-                <div class="trend-neutral" id="productivityTrend">→</div>
-            </div>
-            <div class="metric">
-                <div>😊 Sentiment</div>
-                <div class="metric-value" id="sentiment">Neutral</div>
-                <div class="trend-neutral" id="sentimentTrend">→</div>
-            </div>
-            <div class="metric">
-                <div>⏱️ Response Time</div>
-                <div class="metric-value" id="responseTime">0.0min</div>
-                <div class="trend-neutral" id="responseTrend">→</div>
-            </div>
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-tab="dashboard">📊 Dashboard</div>
+            <div class="nav-tab" data-tab="analytics">📈 Analytics</div>
+            <div class="nav-tab" data-tab="alerts">⚠️ Alerts <span id="alertCount" class="alert-badge" style="display: none;">0</span></div>
+            <div class="nav-tab" data-tab="settings">⚙️ Settings</div>
         </div>
 
-        <div class="metric-card">
-            <h4>🔑 Cognitive Load Analysis</h4>
-            <div id="loadAnalysis">
-                <div class="load-item">
-                    <span class="load-icon">🚧</span>
-                    <strong>Blocker Load:</strong>
-                    <span id="blockerTopics" class="topics">analyzing...</span>
-                </div>
-                <div class="load-item">
-                    <span class="load-icon">🔄</span>
-                    <strong>Process Load:</strong>
-                    <span id="processTopics" class="topics">analyzing...</span>
-                </div>
-                <div class="load-item">
-                    <span class="load-icon">📚</span>
-                    <strong>Context Load:</strong>
-                    <span id="contextTopics" class="topics">analyzing...</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="metric-card">
-            <h4>👥 Team Workload</h4>
-            <div id="workloadDistribution">
-                <div class="workload-placeholder">Scan team chat to see workload distribution</div>
-            </div>
-        </div>
-
-        <div class="recommendation">
-            <h4>💡 AI Recommendations</h4>
-            <div id="recommendations">
-                <p>Scan team chat to get personalized recommendations</p>
-            </div>
-        </div>
-
-        <div class="action-buttons">
-            <button class="btn primary" id="scanBtn">
-                <span class="btn-icon">🔍</span>
-                Scan Team Chat
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <button id="scan" class="button">
+                <span class="real-time-indicator"></span>
+                🔍 Scan Team Chat
             </button>
-            <button class="btn secondary" id="exportBtn">
-                <span class="btn-icon">📤</span>
-                Export Report
+            
+            <div id="quickStats" style="display: none;">
+                <div class="metric-grid">
+                    <div class="metric-card" id="stressCard">
+                        <div class="metric-label">Stress Level</div>
+                        <div class="metric-value" id="stressValue">0%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="stressProgress"></div>
+                        </div>
+                    </div>
+                    <div class="metric-card" id="productivityCard">
+                        <div class="metric-label">Productivity</div>
+                        <div class="metric-value" id="productivityValue">0%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="productivityProgress"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Engagement</div>
+                        <div class="metric-value" id="engagementValue">0%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="engagementProgress"></div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Team Cohesion</div>
+                        <div class="metric-value" id="cohesionValue">0%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cohesionProgress"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <p>🔄 Analyzing team messages...</p>
+                <p style="font-size: 12px; margin-top: 10px;" id="analysisDetails"></p>
+            </div>
+
+            <div id="result"></div>
+
+            <div class="actions-grid" id="quickActions" style="display: none;">
+                <!-- Quick actions will be populated here -->
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <div class="insight-card">
+                <h4>📈 Trends & Patterns</h4>
+                <div id="trendsContent">
+                    <p>No trend data available yet. Perform a scan to see analytics.</p>
+                </div>
+            </div>
+
+            <div class="insight-card">
+                <h4>🔍 Topic Analysis</h4>
+                <div id="topicsContent">
+                    <p>Topics will appear here after analysis.</p>
+                </div>
+            </div>
+
+            <button id="viewFullReport" class="button button-secondary">
+                📋 View Full Report
             </button>
         </div>
-    </div>
 
-    <!-- Deep Analysis Tab -->
-    <div id="analysis" class="tab-content">
-        <div class="metric-card">
-            <h4>🤖 Emotional Intelligence Analysis</h4>
-            <div id="emotionalPulse">
-                <div class="pulse-placeholder">Complete a scan to see emotional analysis</div>
+        <!-- Alerts Tab -->
+        <div id="alerts" class="tab-content">
+            <div id="alertsContent">
+                <div class="insight-card info">
+                    <p>No active alerts. Alerts will appear here when team metrics need attention.</p>
+                </div>
+            </div>
+            
+            <div class="actions-grid">
+                <button id="clearAlerts" class="button button-secondary">Clear All Alerts</button>
+                <button id="alertSettings" class="button button-secondary">Alert Settings</button>
             </div>
         </div>
 
-        <div class="metric-card">
-            <h4>🚨 Predictive Alerts</h4>
-            <div id="predictiveAlerts">
-                <div class="alert-placeholder">No alerts generated yet</div>
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="insight-card">
+                <h4>🔧 Monitoring Settings</h4>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="realTimeMonitoring" checked>
+                        Real-time Monitoring
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="notifications" checked>
+                        Enable Notifications
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>Sensitivity Level:</label>
+                    <select id="sensitivity">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
             </div>
+
+            <div class="insight-card">
+                <h4>🛡️ Privacy & Data</h4>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="anonymousMode" checked>
+                        Anonymous Mode
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>Data Retention:</label>
+                    <select id="dataRetention">
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="saveSettings" class="button">💾 Save Settings</button>
+            <button id="exportData" class="button button-secondary">📤 Export Data</button>
+            <button id="clearAllData" class="button button-secondary">🗑️ Clear All Data</button>
         </div>
 
-        <div class="metric-card">
-            <h4>📅 Meeting Effectiveness</h4>
-            <div id="meetingAnalysis">
-                <div class="meeting-placeholder">Meeting data will appear here after scans</div>
-            </div>
+        <div class="footer">
+            <a href="#" id="refreshData">Refresh</a> • 
+            <a href="privacy.html" target="_blank">Privacy</a> • 
+            <a href="terms.html" target="_blank">Terms</a> •
+            <span id="versionInfo">v2.0</span>
         </div>
-    </div>
-
-    <!-- Trends Tab -->
-    <div id="trends" class="tab-content">
-        <div class="metric-card">
-            <h4>📊 Weekly Trends</h4>
-            <div id="trendChart">
-                <div class="trend-placeholder">Historical data will build up over time</div>
-            </div>
-        </div>
-
-        <div class="metric-card">
-            <h4>🎯 Team Wellness</h4>
-            <div id="gamification">
-                <div class="wellness-placeholder">Complete scans to see wellness score</div>
-            </div>
-        </div>
-
-        <div class="metric-card">
-            <h4>📈 Performance History</h4>
-            <div id="performanceHistory">
-                <div class="history-placeholder">Scan history will appear here</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Settings Tab -->
-    <div id="settings" class="tab-content">
-        <div class="metric-card">
-            <h4>⚙️ Extension Settings</h4>
-            <div class="setting-group">
-                <label>
-                    <input type="checkbox" id="autoScan">
-                    Enable auto-scan
-                </label>
-            </div>
-            <div class="setting-group">
-                <label>
-                    <input type="checkbox" id="notifications">
-                    Show notifications
-                </label>
-            </div>
-            <div class="setting-group">
-                <label>Sensitivity Level:</label>
-                <select id="sensitivity">
-                    <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="high">High</option>
-                </select>
-            </div>
-            <div class="setting-group">
-                <label>Data Retention:</label>
-                <select id="dataRetention">
-                    <option value="7">7 days</option>
-                    <option value="30" selected>30 days</option>
-                    <option value="90">90 days</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="metric-card">
-            <h4>🔒 Privacy Settings</h4>
-            <div class="setting-group">
-                <label>
-                    <input type="checkbox" id="anonymousMode">
-                    Anonymous mode
-                </label>
-            </div>
-            <div class="setting-group">
-                <label>
-                    <input type="checkbox" id="storeRawMessages">
-                    Store message content
-                </label>
-            </div>
-        </div>
-
-        <div class="action-buttons">
-            <button class="btn primary" id="saveSettings">Save Settings</button>
-            <button class="btn danger" id="clearData">Clear All Data</button>
-        </div>
-    </div>
-
-    <div class="footer">
-        <p>Analysis completed at <span id="currentTime">--:--:--</span></p>
     </div>
 
     <script src="popup.js"></script>

@@ -1,745 +1,649 @@
-// Enhanced popup.js with all features
-document.addEventListener('DOMContentLoaded', function() {
-    initializeExtension();
-    setupEventListeners();
-    updateCurrentTime();
-});
+// Enhanced Popup Script for Cognitive Load Monitor Pro
+class EnhancedPopupManager {
+    constructor() {
+        this.currentAnalysis = null;
+        this.settings = {};
+        this.alerts = [];
+        this.trends = [];
+        this.init();
+    }
 
-function setupEventListeners() {
-    // Tab functionality
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const tabId = tab.getAttribute('data-tab');
-            switchTab(tabId);
+    async init() {
+        await this.loadSettings();
+        await this.loadAlerts();
+        this.setupEventListeners();
+        this.initializeTabs();
+        this.updateAlertBadge();
+        
+        if (this.hasConsent()) {
+            this.showLastScan();
+            this.startRealTimeUpdates();
+        } else {
+            this.showConsentDialog();
+        }
+    }
+
+    setupEventListeners() {
+        // Tab navigation
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                this.switchTab(e.target.dataset.tab);
+            });
         });
-    });
 
-    // Button event listeners
-    document.getElementById('scanBtn').addEventListener('click', scanTeamChat);
-    document.getElementById('exportBtn').addEventListener('click', exportReport);
-    document.getElementById('saveSettings').addEventListener('click', saveSettings);
-    document.getElementById('clearData').addEventListener('click', clearAllData);
-}
+        // Main scan button
+        document.getElementById('scan').addEventListener('click', () => {
+            this.performScan();
+        });
 
-async function initializeExtension() {
-    await loadSettings();
-    const savedData = await chrome.storage.local.get(['currentAnalysis', 'lastScan']);
-    
-    if (savedData.currentAnalysis) {
-        updateUI(savedData.currentAnalysis);
+        // Settings
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            this.saveSettings();
+        });
+
+        document.getElementById('clearAlerts').addEventListener('click', () => {
+            this.clearAlerts();
+        });
+
+        document.getElementById('exportData').addEventListener('click', () => {
+            this.exportData();
+        });
+
+        document.getElementById('clearAllData').addEventListener('click', () => {
+            this.clearAllData();
+        });
+
+        document.getElementById('refreshData').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.refreshData();
+        });
+
+        document.getElementById('viewFullReport').addEventListener('click', () => {
+            this.viewFullReport();
+        });
+
+        // Real-time message listener
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            if (request.action === "realTimeUpdate") {
+                this.handleRealTimeUpdate(request.data);
+            }
+        });
     }
-    
-    if (savedData.lastScan) {
-        document.getElementById('lastScanTime').textContent = `Last scan: ${formatTime(savedData.lastScan)}`;
+
+    initializeTabs() {
+        this.switchTab('dashboard');
     }
-    
-    startRealTimeMonitoring();
-}
 
-function switchTab(tabId) {
-    // Update active tab
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-    
-    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-    document.getElementById(tabId).classList.add('active');
-}
+    switchTab(tabName) {
+        // Update active tab
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
 
-async function scanTeamChat() {
-    const scanBtn = document.getElementById('scanBtn');
-    const originalText = scanBtn.innerHTML;
-    
-    try {
+        // Show corresponding content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(tabName).classList.add('active');
+
+        // Load tab-specific data
+        switch(tabName) {
+            case 'analytics':
+                this.loadAnalyticsData();
+                break;
+            case 'alerts':
+                this.loadAlertsData();
+                break;
+            case 'settings':
+                this.loadSettingsData();
+                break;
+        }
+    }
+
+    hasConsent() {
+        return localStorage.getItem('cognitiveLoadConsent') === 'true';
+    }
+
+    showConsentDialog() {
+        const resultElement = document.getElementById('result');
+        const scanButton = document.getElementById('scan');
+        
+        scanButton.disabled = true;
+        resultElement.innerHTML = `
+            <div class="insight-card info">
+                <h3>🔒 Privacy First</h3>
+                <p>Before we start, please review how we handle your data:</p>
+                <ul>
+                    <li>✅ All analysis happens in your browser</li>
+                    <li>✅ No messages are sent to external servers</li>
+                    <li>✅ Only anonymous metrics are stored</li>
+                    <li>✅ You can delete all data anytime</li>
+                    <li>✅ Real-time monitoring is optional</li>
+                </ul>
+                <p>By continuing, you agree to our <a href="privacy.html" target="_blank">Privacy Policy</a> and <a href="terms.html" target="_blank">Terms of Service</a>.</p>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button id="acceptConsent" class="button" style="margin-right: 10px;">I Understand & Agree</button>
+                    <button id="declineConsent" class="button button-secondary">Cancel</button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('acceptConsent').addEventListener('click', () => {
+            localStorage.setItem('cognitiveLoadConsent', 'true');
+            localStorage.setItem('consentDate', new Date().toISOString());
+            resultElement.innerHTML = '<div class="insight-card info"><p>✅ Consent recorded. You can now scan team chats.</p></div>';
+            scanButton.disabled = false;
+            this.showLastScan();
+            this.startRealTimeUpdates();
+        });
+
+        document.getElementById('declineConsent').addEventListener('click', () => {
+            resultElement.innerHTML = '<div class="insight-card warning"><p>❌ Consent required to use this extension.</p></div>';
+        });
+    }
+
+    async performScan() {
+        const scanButton = document.getElementById('scan');
+        const loadingElement = document.getElementById('loading');
+        const resultElement = document.getElementById('result');
+        const quickStats = document.getElementById('quickStats');
+        const quickActions = document.getElementById('quickActions');
+
         // Show loading state
-        scanBtn.innerHTML = '<span class="spinner"></span>Scanning...';
-        scanBtn.disabled = true;
+        scanButton.disabled = true;
+        scanButton.innerHTML = '<span class="real-time-indicator"></span> Scanning...';
+        loadingElement.style.display = 'block';
+        quickStats.style.display = 'none';
+        quickActions.style.display = 'none';
+        resultElement.innerHTML = '';
 
-        // Get current tab
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
-        if (!tab.url.includes('zoho.com/cliq')) {
-            throw new Error('Please navigate to Zoho Cliq to scan messages');
+        try {
+            // Update analysis details
+            document.getElementById('analysisDetails').textContent = 'Connecting to Zoho Cliq...';
+
+            // Get current active tab
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            
+            if (!tab.url.includes('cliq.zoho.com')) {
+                throw new Error('Please navigate to Zoho Cliq first (https://cliq.zoho.com)');
+            }
+            
+            document.getElementById('analysisDetails').textContent = 'Extracting messages...';
+
+            // Send message to content script
+            const response = await chrome.tabs.sendMessage(tab.id, { action: "getMessages" });
+            
+            if (!response.success) {
+                throw new Error(response.error || 'Failed to extract messages from Cliq');
+            }
+
+            if (response.messages.length === 0) {
+                throw new Error('No messages found. Please ensure you\'re in a team chat with messages.');
+            }
+            
+            document.getElementById('analysisDetails').textContent = `Analyzing ${response.messages.length} messages...`;
+
+            // Send for analysis
+            const analysis = await chrome.runtime.sendMessage({
+                action: "analyzeMessages",
+                messages: response.messages
+            });
+            
+            if (!analysis.success) {
+                throw new Error(analysis.error || 'Analysis failed');
+            }
+            
+            // Display results
+            this.displayResults(analysis.data, response.messages.length);
+            
+        } catch (error) {
+            console.error('Scan error:', error);
+            resultElement.innerHTML = `
+                <div class="insight-card warning">
+                    <h4>❌ Scan Failed</h4>
+                    <p>${error.message}</p>
+                    ${error.suggestions ? `
+                        <div style="margin-top: 10px;">
+                            <strong>Suggestions:</strong>
+                            <ul>
+                                ${error.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } finally {
+            scanButton.disabled = false;
+            scanButton.innerHTML = '<span class="real-time-indicator"></span> 🔍 Scan Team Chat';
+            loadingElement.style.display = 'none';
+        }
+    }
+
+    displayResults(data, messageCount) {
+        const resultElement = document.getElementById('result');
+        const quickStats = document.getElementById('quickStats');
+        const quickActions = document.getElementById('quickActions');
+
+        this.currentAnalysis = data;
+
+        // Update quick stats
+        this.updateMetricCard('stress', data.stressLevel);
+        this.updateMetricCard('productivity', data.productivityScore);
+        this.updateMetricCard('engagement', data.engagementLevel);
+        this.updateMetricCard('cohesion', data.teamCohesion);
+
+        quickStats.style.display = 'block';
+
+        // Display main results
+        const sentimentEmoji = this.getSentimentEmoji(data.sentiment);
+        const urgencyClass = this.getUrgencyClass(data.recommendation.urgency);
+
+        resultElement.innerHTML = `
+            <div class="insight-card ${urgencyClass}">
+                <h4>💡 ${this.getUrgencyIcon(data.recommendation.urgency)} Recommendation</h4>
+                <div style="font-size: 13px; line-height: 1.4; white-space: pre-line;">${data.recommendation.text}</div>
+            </div>
+
+            ${data.topics && data.topics.length > 0 ? `
+                <div class="insight-card">
+                    <h4>🔍 Key Topics</h4>
+                    <div class="topics-list">
+                        ${data.topics.map(topic => `
+                            <span class="topic-tag">
+                                ${topic.topic} (${topic.percentage}%)
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            ${data.patterns && data.patterns.length > 0 ? `
+                <div class="insight-card">
+                    <h4>📊 Detected Patterns</h4>
+                    <div style="font-size: 13px;">
+                        ${data.patterns.map(pattern => this.getPatternDescription(pattern)).join(' • ')}
+                    </div>
+                </div>
+            ` : ''}
+        `;
+
+        // Update quick actions
+        this.updateQuickActions(data.immediateActions);
+
+        quickActions.style.display = 'grid';
+
+        // Save this scan
+        this.saveScanToHistory(data, messageCount);
+    }
+
+    updateMetricCard(type, value) {
+        const card = document.getElementById(`${type}Card`);
+        const valueElement = document.getElementById(`${type}Value`);
+        const progressElement = document.getElementById(`${type}Progress`);
+
+        valueElement.textContent = `${value}%`;
+        progressElement.style.width = `${value}%`;
+
+        // Update colors based on value and type
+        let colorClass = '';
+        if (type === 'stress') {
+            if (value > 70) colorClass = 'stress-high';
+            else if (value > 40) colorClass = 'stress-medium';
+            else colorClass = 'stress-low';
+            progressElement.style.background = this.getStressColor(value);
+        } else {
+            if (value > 70) colorClass = 'productivity-high';
+            else if (value > 40) colorClass = 'productivity-medium';
+            else colorClass = 'productivity-low';
+            progressElement.style.background = this.getProductivityColor(value);
         }
 
-        // Execute content script to analyze messages
-        const response = await chrome.tabs.sendMessage(tab.id, { 
-            action: "analyzeMessages" 
+        card.className = `metric-card ${colorClass}`;
+    }
+
+    getStressColor(value) {
+        if (value > 70) return '#e74c3c';
+        if (value > 40) return '#f39c12';
+        return '#27ae60';
+    }
+
+    getProductivityColor(value) {
+        if (value > 70) return '#27ae60';
+        if (value > 40) return '#f39c12';
+        return '#e74c3c';
+    }
+
+    getSentimentEmoji(sentiment) {
+        switch(sentiment) {
+            case 'positive': return '😊';
+            case 'negative': return '😔';
+            default: return '😐';
+        }
+    }
+
+    getUrgencyClass(urgency) {
+        switch(urgency) {
+            case 'critical': return 'critical';
+            case 'high': return 'warning';
+            default: return 'info';
+        }
+    }
+
+    getUrgencyIcon(urgency) {
+        switch(urgency) {
+            case 'critical': return '🚨';
+            case 'high': return '⚠️';
+            case 'medium': return '📋';
+            default: return '💡';
+        }
+    }
+
+    getPatternDescription(pattern) {
+        const patterns = {
+            'rapid_messaging': 'Rapid messaging detected',
+            'repeated_questions': 'Repeated questions found',
+            'late_night_work': 'Late night activity'
+        };
+        return patterns[pattern] || pattern;
+    }
+
+    updateQuickActions(actions) {
+        const quickActions = document.getElementById('quickActions');
+        quickActions.innerHTML = actions.map(action => `
+            <div class="action-item">${action}</div>
+        `).join('');
+    }
+
+    async loadSettings() {
+        const result = await chrome.runtime.sendMessage({ action: "getSettings" });
+        if (result.success) {
+            this.settings = result.settings;
+        }
+    }
+
+    async loadAlerts() {
+        const result = await chrome.runtime.sendMessage({ action: "getAlerts" });
+        if (result.success) {
+            this.alerts = result.alerts;
+            this.updateAlertBadge();
+        }
+    }
+
+    updateAlertBadge() {
+        const alertCount = document.getElementById('alertCount');
+        if (this.alerts.length > 0) {
+            alertCount.textContent = this.alerts.length;
+            alertCount.style.display = 'inline-flex';
+        } else {
+            alertCount.style.display = 'none';
+        }
+    }
+
+    async saveSettings() {
+        const settings = {
+            realTimeMonitoring: document.getElementById('realTimeMonitoring').checked,
+            notifications: document.getElementById('notifications').checked,
+            sensitivity: document.getElementById('sensitivity').value,
+            anonymousMode: document.getElementById('anonymousMode').checked,
+            dataRetentionDays: parseInt(document.getElementById('dataRetention').value)
+        };
+
+        const result = await chrome.runtime.sendMessage({
+            action: "saveSettings",
+            settings: settings
         });
 
-        if (!response || !response.success) {
-            throw new Error(response?.error || 'Failed to analyze messages');
+        if (result.success) {
+            this.showNotification('Settings saved successfully!', 'success');
+        } else {
+            this.showNotification('Failed to save settings', 'error');
+        }
+    }
+
+    loadSettingsData() {
+        document.getElementById('realTimeMonitoring').checked = this.settings.realTimeMonitoring !== false;
+        document.getElementById('notifications').checked = this.settings.notifications !== false;
+        document.getElementById('sensitivity').value = this.settings.sensitivity || 'medium';
+        document.getElementById('anonymousMode').checked = this.settings.anonymousMode !== false;
+        document.getElementById('dataRetention').value = this.settings.dataRetentionDays || 30;
+    }
+
+    loadAlertsData() {
+        const alertsContent = document.getElementById('alertsContent');
+        
+        if (this.alerts.length === 0) {
+            alertsContent.innerHTML = `
+                <div class="insight-card info">
+                    <p>No active alerts. Alerts will appear here when team metrics need attention.</p>
+                </div>
+            `;
+        } else {
+            alertsContent.innerHTML = this.alerts.map(alert => `
+                <div class="insight-card ${alert.level === 'high' ? 'critical' : 'warning'}">
+                    <h4>${this.getAlertIcon(alert.type)} ${alert.type.toUpperCase()} Alert</h4>
+                    <p>${alert.message}</p>
+                    <small>${new Date(alert.timestamp).toLocaleString()}</small>
+                </div>
+            `).join('');
+        }
+    }
+
+    getAlertIcon(type) {
+        const icons = {
+            'stress': '😰',
+            'productivity': '📉',
+            'engagement': '💤'
+        };
+        return icons[type] || '⚠️';
+    }
+
+    async clearAlerts() {
+        const result = await chrome.runtime.sendMessage({ action: "clearAlerts" });
+        if (result.success) {
+            this.alerts = [];
+            this.updateAlertBadge();
+            this.loadAlertsData();
+            this.showNotification('Alerts cleared successfully!', 'success');
+        }
+    }
+
+    async loadAnalyticsData() {
+        const result = await chrome.runtime.sendMessage({ action: "getTrends" });
+        if (result.success) {
+            this.trends = result.trends;
+            this.displayAnalytics();
+        }
+    }
+
+    displayAnalytics() {
+        const trendsContent = document.getElementById('trendsContent');
+        const topicsContent = document.getElementById('topicsContent');
+
+        if (this.trends.stress.length === 0) {
+            trendsContent.innerHTML = '<p>No trend data available yet. Perform a scan to see analytics.</p>';
+            topicsContent.innerHTML = '<p>Topics will appear here after analysis.</p>';
+            return;
         }
 
-        // Enhance analysis with additional features
-        const enhancedAnalysis = await enhanceAnalysis(response.data);
-        
-        // Save results
-        await chrome.storage.local.set({ 
-            currentAnalysis: enhancedAnalysis,
-            lastScan: new Date().toISOString()
-        });
+        // Display simple trend analysis
+        const stressTrend = this.calculateTrend(this.trends.stress);
+        const productivityTrend = this.calculateTrend(this.trends.productivity);
 
-        // Update scan history
-        await updateScanHistory(enhancedAnalysis);
-        
-        // Update UI
-        updateUI(enhancedAnalysis);
-        
-        // Show success notification
-        showNotification('Scan completed successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Scan failed:', error);
-        showNotification(`Scan failed: ${error.message}`, 'error');
-        
-        // Fallback to demo data for demonstration
-        const demoData = generateDemoData();
-        updateUI(demoData);
-    } finally {
-        scanBtn.innerHTML = originalText;
-        scanBtn.disabled = false;
-    }
-}
-
-async function enhanceAnalysis(basicAnalysis) {
-    // Add enhanced features to basic analysis
-    const enhanced = {
-        ...basicAnalysis,
-        // Real-time metrics
-        responseTime: await calculateResponseTime(),
-        channelName: await getCurrentChannel(),
-        
-        // Enhanced cognitive load analysis
-        cognitiveLoad: analyzeCognitiveLoadTypes(basicAnalysis.keywords),
-        
-        // Team workload analysis
-        workload: analyzeWorkloadDistribution(),
-        
-        // Emotional intelligence metrics
-        emotionalPulse: analyzeEmotionalPulse(basicAnalysis),
-        
-        // Predictive analytics
-        predictiveAlerts: generatePredictiveAlerts(basicAnalysis),
-        
-        // Meeting analysis
-        meetingEffectiveness: analyzeMeetingEffectiveness(),
-        
-        // Trend data
-        trends: await generateTrendData(),
-        
-        // Gamification
-        gamification: calculateWellnessScore(basicAnalysis),
-        
-        // Timestamp
-        analyzedAt: new Date().toISOString()
-    };
-    
-    return enhanced;
-}
-
-function updateUI(data) {
-    if (!data) return;
-    
-    // Update basic metrics
-    document.getElementById('messageCount').textContent = data.messageCount || '0';
-    document.getElementById('channelName').textContent = data.channelName || '#general';
-    document.getElementById('stressLevel').textContent = data.stressLevel || '0.0%';
-    document.getElementById('productivityScore').textContent = data.productivityScore || '0.0%';
-    document.getElementById('sentiment').textContent = data.sentiment || 'Neutral';
-    document.getElementById('responseTime').textContent = data.responseTime || '0.0min';
-    
-    // Update trends
-    updateTrendIndicators(data);
-    
-    // Update cognitive load analysis
-    if (data.cognitiveLoad) {
-        document.getElementById('blockerTopics').textContent = data.cognitiveLoad.blocker.join(', ');
-        document.getElementById('processTopics').textContent = data.cognitiveLoad.process.join(', ');
-        document.getElementById('contextTopics').textContent = data.cognitiveLoad.context.join(', ');
-    }
-    
-    // Update workload distribution
-    updateWorkloadUI(data.workload);
-    
-    // Update recommendations
-    updateRecommendations(data);
-    
-    // Update emotional pulse
-    updateEmotionalPulseUI(data.emotionalPulse);
-    
-    // Update predictive alerts
-    updatePredictiveAlertsUI(data.predictiveAlerts);
-    
-    // Update meeting analysis
-    updateMeetingAnalysisUI(data.meetingEffectiveness);
-    
-    // Update trends and gamification
-    updateTrendsUI(data.trends);
-    updateGamificationUI(data.gamification);
-    
-    // Update performance history
-    updatePerformanceHistory();
-    
-    // Update last scan time
-    document.getElementById('lastScanTime').textContent = `Last scan: ${formatTime(new Date().toISOString())}`;
-}
-
-function updateTrendIndicators(data) {
-    // Simple trend calculation based on previous data
-    const stressTrend = Math.random() > 0.5 ? '↗️' : '↘️';
-    const productivityTrend = Math.random() > 0.5 ? '↗️' : '↘️';
-    
-    document.getElementById('stressTrend').textContent = stressTrend;
-    document.getElementById('productivityTrend').textContent = productivityTrend;
-    document.getElementById('sentimentTrend').textContent = '→';
-    document.getElementById('responseTrend').textContent = '→';
-}
-
-function updateWorkloadUI(workload) {
-    const container = document.getElementById('workloadDistribution');
-    if (!workload || !container) return;
-    
-    container.innerHTML = workload.map(member => `
-        <div style="margin: 12px 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 13px;">${member.name}</span>
-                <span style="font-size: 12px; color: var(--text-light);">${member.workload}%</span>
+        trendsContent.innerHTML = `
+            <div style="font-size: 13px;">
+                <p><strong>Stress Trend:</strong> ${stressTrend.direction} ${stressTrend.value}% ${this.getTrendIcon(stressTrend.direction)}</p>
+                <p><strong>Productivity Trend:</strong> ${productivityTrend.direction} ${productivityTrend.value}% ${this.getTrendIcon(productivityTrend.direction)}</p>
+                <p><strong>Data Points:</strong> ${this.trends.stress.length} scans</p>
             </div>
-            <div class="workload-bar">
-                <div class="workload-fill" style="width: ${member.workload}%; background: ${getWorkloadColor(member.workload)}"></div>
-            </div>
-            <div style="font-size: 11px; color: ${getStatusColor(member.status)};">${member.status}</div>
-        </div>
-    `).join('');
-}
+        `;
 
-function updateRecommendations(data) {
-    const container = document.getElementById('recommendations');
-    if (!container) return;
-    
-    const stress = parseFloat(data.stressLevel) || 0;
-    const productivity = parseFloat(data.productivityScore) || 0;
-    
-    let recommendations = [];
-    
-    if (stress > 70 && productivity < 30) {
-        recommendations = [
-            "🚨 <strong>CRITICAL SITUATION</strong>",
-            "• Schedule immediate team intervention",
-            "• Redistribute high-stress workloads",
-            "• Implement mandatory breaks",
-            "• Provide manager support resources"
-        ];
-    } else if (stress > 60) {
-        recommendations = [
-            "⚠️ <strong>HIGH STRESS LEVELS</strong>",
-            "• Review and adjust deadlines",
-            "• Implement stress-reduction activities",
-            "• Conduct 1:1 check-ins",
-            "• Encourage time off"
-        ];
-    } else if (productivity < 40) {
-        recommendations = [
-            "📉 <strong>LOW PRODUCTIVITY</strong>",
-            "• Identify and remove workflow blockers",
-            "• Clarify task priorities",
-            "• Provide additional resources/training",
-            "• Streamline communication processes"
-        ];
-    } else if (data.sentiment === 'negative') {
-        recommendations = [
-            "😔 <strong>NEGATIVE SENTIMENT</strong>",
-            "• Facilitate team building activities",
-            "• Improve recognition programs",
-            "• Address communication issues",
-            "• Create positive feedback loops"
-        ];
-    } else {
-        recommendations = [
-            "✅ <strong>HEALTHY TEAM</strong>",
-            "• Maintain current workflow balance",
-            "• Continue regular check-ins",
-            "• Foster continuous improvement",
-            "• Celebrate team successes"
-        ];
-    }
-    
-    container.innerHTML = recommendations.join('<br>');
-}
-
-function updateEmotionalPulseUI(pulse) {
-    const container = document.getElementById('emotionalPulse');
-    if (!pulse || !container) return;
-    
-    container.innerHTML = `
-        <div class="metric-grid">
-            <div class="metric">
-                <div>😠 Frustration</div>
-                <div class="metric-value">${pulse.frustration}%</div>
-            </div>
-            <div class="metric">
-                <div>💪 Confidence</div>
-                <div class="metric-value">${pulse.confidence}%</div>
-            </div>
-            <div class="metric">
-                <div>🤝 Collaboration</div>
-                <div class="metric-value">${pulse.collaboration}%</div>
-            </div>
-            <div class="metric">
-                <div>🎯 Motivation</div>
-                <div class="metric-value">${pulse.motivation}%</div>
-            </div>
-        </div>
-    `;
-}
-
-function updatePredictiveAlertsUI(alerts) {
-    const container = document.getElementById('predictiveAlerts');
-    if (!alerts || !container) return;
-    
-    if (alerts.length === 0) {
-        container.innerHTML = '<div class="placeholder">No critical alerts at this time</div>';
-        return;
-    }
-    
-    container.innerHTML = alerts.map(alert => `
-        <div class="alert-item ${alert.type || 'warning'}">
-            <strong>${alert.team}</strong>
-            <div style="font-size: 12px; margin-top: 4px;">${alert.message}</div>
-            <div style="font-size: 11px; color: var(--text-light); margin-top: 4px;">
-                Risk: ${alert.risk}% • Timeline: ${alert.timeline}
-            </div>
-        </div>
-    `).join('');
-}
-
-function updateMeetingAnalysisUI(meeting) {
-    const container = document.getElementById('meetingAnalysis');
-    if (!meeting || !container) return;
-    
-    container.innerHTML = `
-        <div style="margin: 8px 0;">
-            <div>🗣️ Speaking Distribution:</div>
-            <div class="progress-container">
-                <div class="progress-bar" style="width: ${meeting.speakingDistribution.manager}%">
-                    Manager: ${meeting.speakingDistribution.manager}%
+        // Display topics from current analysis
+        if (this.currentAnalysis && this.currentAnalysis.topics) {
+            topicsContent.innerHTML = this.currentAnalysis.topics.map(topic => `
+                <div style="margin-bottom: 8px;">
+                    <strong>${topic.topic}:</strong> ${topic.percentage}% (${topic.frequency} mentions)
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${topic.percentage}%; background: #3498db;"></div>
+                    </div>
                 </div>
-            </div>
-            <div class="progress-container">
-                <div class="progress-bar" style="width: ${meeting.speakingDistribution.team}%; background: var(--success);">
-                    Team: ${meeting.speakingDistribution.team}%
-                </div>
-            </div>
-        </div>
-        <div style="margin: 8px 0;">
-            <div>🎯 Decision Clarity: ${meeting.decisionClarity}/10</div>
-            <div class="progress-container">
-                <div class="progress-bar" style="width: ${meeting.decisionClarity * 10}%"></div>
-            </div>
-        </div>
-        <div style="margin: 8px 0;">
-            <div>⏰ Time Efficiency: ${meeting.timeEfficiency}/10</div>
-            <div class="progress-container">
-                <div class="progress-bar" style="width: ${meeting.timeEfficiency * 10}%"></div>
-            </div>
-        </div>
-    `;
-}
-
-function updateTrendsUI(trends) {
-    const container = document.getElementById('trendChart');
-    if (!trends || !container) return;
-    
-    container.innerHTML = `
-        <div style="margin: 8px 0;">
-            <div>📈 Productivity: ${trends.productivity}</div>
-            <div class="progress-container">
-                <div class="progress-bar" style="width: ${trends.productivityValue || 50}%"></div>
-            </div>
-        </div>
-        <div style="margin: 8px 0;">
-            <div>😰 Stress: ${trends.stress}</div>
-            <div class="progress-container">
-                <div class="progress-bar" style="width: ${trends.stressValue || 30}%; background: var(--danger);"></div>
-            </div>
-        </div>
-        <div style="margin: 8px 0;">
-            <div>🤖 Prediction: ${trends.prediction}</div>
-        </div>
-    `;
-}
-
-function updateGamificationUI(gamification) {
-    const container = document.getElementById('gamification');
-    if (!gamification || !container) return;
-    
-    container.innerHTML = `
-        <div style="text-align: center;">
-            <div style="font-size: 32px; font-weight: bold; color: ${getWellnessColor(gamification.wellnessScore)};">
-                🏆 ${gamification.wellnessScore}/100
-            </div>
-            <div style="font-size: 12px; color: var(--text-light); margin-bottom: 16px;">
-                Team Wellness Score
-            </div>
-            <div style="margin: 12px 0; padding: 12px; background: var(--bg); border-radius: 8px;">
-                <strong>🎯 This Week:</strong> ${gamification.weeklyGoal}
-            </div>
-            <div style="margin: 8px 0;">
-                Progress: ${gamification.progress}/${gamification.totalTargets} targets completed
-            </div>
-            <div style="margin-top: 12px;">
-                ${gamification.badges.map(badge => 
-                    `<span style="display: inline-block; background: var(--primary); color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px; margin: 2px;">${badge}</span>`
-                ).join('')}
-            </div>
-        </div>
-    `;
-}
-
-async function updatePerformanceHistory() {
-    const container = document.getElementById('performanceHistory');
-    const history = await getScanHistory();
-    
-    if (history.length === 0) {
-        container.innerHTML = '<div class="placeholder">No scan history yet</div>';
-        return;
+            `).join('');
+        }
     }
-    
-    const recentScans = history.slice(-5).reverse();
-    container.innerHTML = recentScans.map(scan => `
-        <div class="history-item">
-            <div style="display: flex; justify-content: space-between;">
-                <span>${formatTime(scan.timestamp)}</span>
-                <span>Stress: ${scan.stressLevel} | Prod: ${scan.productivityScore}</span>
-            </div>
-        </div>
-    `).join('');
-}
 
-// Utility functions
-function getWorkloadColor(percentage) {
-    if (percentage < 30) return '#22c55e';
-    if (percentage < 70) return '#eab308';
-    return '#dc2626';
-}
+    calculateTrend(data) {
+        if (data.length < 2) return { direction: 'stable', value: 0 };
 
-function getStatusColor(status) {
-    switch (status) {
-        case '✅ Balanced': return '#22c55e';
-        case '⚠️ Overloaded': return '#dc2626';
-        case '🔄 Underutilized': return '#eab308';
-        default: return 'var(--text-light)';
-    }
-}
+        const recent = data.slice(-5); // Last 5 data points
+        const first = recent[0].value;
+        const last = recent[recent.length - 1].value;
+        const change = ((last - first) / first) * 100;
 
-function getWellnessColor(score) {
-    if (score >= 80) return '#22c55e';
-    if (score >= 60) return '#eab308';
-    return '#dc2626';
-}
+        let direction = 'stable';
+        if (change > 5) direction = 'increasing';
+        else if (change < -5) direction = 'decreasing';
 
-function formatTime(timestamp) {
-    return new Date(timestamp).toLocaleTimeString();
-}
-
-function updateCurrentTime() {
-    document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
-    setTimeout(updateCurrentTime, 1000);
-}
-
-function showNotification(message, type = 'info') {
-    // Simple notification implementation
-    console.log(`[${type.toUpperCase()}] ${message}`);
-}
-
-// Analysis enhancement functions
-function analyzeCognitiveLoadTypes(keywords) {
-    const blockerWords = ['waiting', 'blocked', 'stuck', 'issue', 'problem', 'error', 'cannot'];
-    const processWords = ['tool', 'system', 'notification', 'zoho', 'process', 'workflow'];
-    const contextWords = ['project', 'task', 'meeting', 'discussion', 'review', 'plan'];
-    
-    return {
-        blocker: keywords.filter(kw => blockerWords.some(bw => kw.includes(bw))),
-        process: keywords.filter(kw => processWords.some(pw => kw.includes(pw))),
-        context: keywords.filter(kw => contextWords.some(cw => kw.includes(cw)))
-    };
-}
-
-function analyzeWorkloadDistribution() {
-    // Simulated workload analysis
-    return [
-        { name: "Sarah", workload: 45, status: "⚠️ Overloaded" },
-        { name: "John", workload: 32, status: "✅ Balanced" },
-        { name: "Mike", workload: 8, status: "🔄 Underutilized" },
-        { name: "Lisa", workload: 28, status: "✅ Balanced" },
-        { name: "David", workload: 35, status: "✅ Balanced" }
-    ];
-}
-
-function analyzeEmotionalPulse(analysis) {
-    const stress = parseFloat(analysis.stressLevel) || 0;
-    const productivity = parseFloat(analysis.productivityScore) || 0;
-    
-    return {
-        frustration: Math.min(100, Math.max(0, stress * 0.8)),
-        confidence: Math.min(100, Math.max(0, productivity * 1.2)),
-        collaboration: Math.min(100, Math.max(0, 80 - (stress * 0.3))),
-        motivation: Math.min(100, Math.max(0, productivity * 1.5 - (stress * 0.5)))
-    };
-}
-
-function generatePredictiveAlerts(analysis) {
-    const stress = parseFloat(analysis.stressLevel) || 0;
-    const productivity = parseFloat(analysis.productivityScore) || 0;
-    
-    const alerts = [];
-    
-    if (stress > 70 && productivity < 40) {
-        alerts.push({
-            team: "Team Alpha",
-            message: "High burnout risk detected - productivity declining while stress increasing",
-            risk: 72,
-            timeline: "2 weeks",
-            type: "danger"
-        });
-    }
-    
-    if (stress > 60) {
-        alerts.push({
-            team: "Stress Alert",
-            message: "Elevated stress levels may impact team wellbeing",
-            risk: 45,
-            timeline: "1 month",
-            type: "warning"
-        });
-    }
-    
-    return alerts;
-}
-
-function analyzeMeetingEffectiveness() {
-    return {
-        speakingDistribution: { manager: 65, team: 35 },
-        decisionClarity: 4.2,
-        timeEfficiency: 6.8
-    };
-}
-
-async function generateTrendData() {
-    const history = await getScanHistory();
-    
-    if (history.length < 2) {
         return {
-            productivity: "Insufficient data",
-            stress: "Insufficient data",
-            prediction: "Need more scan data"
+            direction: direction,
+            value: Math.abs(Math.round(change))
         };
     }
-    
-    return {
-        productivity: "Stable trend",
-        stress: "Slight increase",
-        prediction: "Monitor stress levels",
-        productivityValue: 65,
-        stressValue: 35
-    };
-}
 
-function calculateWellnessScore(analysis) {
-    const stress = parseFloat(analysis.stressLevel) || 0;
-    const productivity = parseFloat(analysis.productivityScore) || 0;
-    
-    // Simple wellness calculation
-    const baseScore = 100 - stress + (productivity * 0.5);
-    const wellness = Math.max(0, Math.min(100, baseScore));
-    
-    return {
-        wellnessScore: Math.round(wellness),
-        weeklyGoal: 'Reduce context switching',
-        progress: 3,
-        totalTargets: 5,
-        badges: wellness >= 80 ? ['Focus Master', 'Team Player'] : ['Focus Master']
-    };
-}
-
-async function calculateResponseTime() {
-    // Simulate response time calculation
-    return (Math.random() * 3 + 1).toFixed(1) + 'min';
-}
-
-async function getCurrentChannel() {
-    try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tab.url.includes('zoho.com/cliq')) {
-            return tab.title || '#unknown-channel';
+    getTrendIcon(direction) {
+        switch(direction) {
+            case 'increasing': return '↗️';
+            case 'decreasing': return '↘️';
+            default: return '➡️';
         }
-    } catch (error) {
-        console.error('Failed to get channel name:', error);
     }
-    return '#general';
-}
 
-async function getScanHistory() {
-    const result = await chrome.storage.local.get(['scanHistory']);
-    return result.scanHistory || [];
-}
-
-async function updateScanHistory(analysis) {
-    const history = await getScanHistory();
-    history.push({
-        timestamp: analysis.analyzedAt,
-        stressLevel: analysis.stressLevel,
-        productivityScore: analysis.productivityScore,
-        sentiment: analysis.sentiment,
-        messageCount: analysis.messageCount
-    });
-    
-    // Keep only last 50 scans
-    const trimmedHistory = history.slice(-50);
-    await chrome.storage.local.set({ scanHistory: trimmedHistory });
-}
-
-// Settings management
-async function loadSettings() {
-    const result = await chrome.storage.local.get(['settings', 'privacySettings']);
-    const settings = result.settings || {};
-    const privacy = result.privacySettings || {};
-    
-    // Update UI with current settings
-    document.getElementById('autoScan').checked = settings.autoScan || false;
-    document.getElementById('notifications').checked = settings.notifications !== false;
-    document.getElementById('sensitivity').value = settings.sensitivity || 'medium';
-    document.getElementById('dataRetention').value = settings.dataRetentionDays || 30;
-    document.getElementById('anonymousMode').checked = privacy.anonymousMode !== false;
-    document.getElementById('storeRawMessages').checked = privacy.storeRawMessages || false;
-}
-
-async function saveSettings() {
-    const settings = {
-        autoScan: document.getElementById('autoScan').checked,
-        notifications: document.getElementById('notifications').checked,
-        sensitivity: document.getElementById('sensitivity').value,
-        dataRetentionDays: parseInt(document.getElementById('dataRetention').value)
-    };
-    
-    const privacySettings = {
-        anonymousMode: document.getElementById('anonymousMode').checked,
-        storeRawMessages: document.getElementById('storeRawMessages').checked
-    };
-    
-    await chrome.storage.local.set({ settings, privacySettings });
-    showNotification('Settings saved successfully!', 'success');
-}
-
-async function clearAllData() {
-    if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-        await chrome.storage.local.clear();
-        initializeExtension();
-        showNotification('All data cleared successfully!', 'success');
-    }
-}
-
-async function exportReport() {
-    const analysis = await chrome.storage.local.get(['currentAnalysis']);
-    if (!analysis.currentAnalysis) {
-        showNotification('No data to export. Please scan team chat first.', 'error');
-        return;
-    }
-    
-    const report = generateReport(analysis.currentAnalysis);
-    const blob = new Blob([report], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cognitive-load-report-${new Date().toISOString().split('T')[0]}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    URL.revokeObjectURL(url);
-    showNotification('Report exported successfully!', 'success');
-}
-
-function generateReport(analysis) {
-    return `# Cognitive Load Monitor Report
-Generated: ${new Date().toISOString()}
-
-## Executive Summary
-- **Productivity Score**: ${analysis.productivityScore}
-- **Stress Level**: ${analysis.stressLevel}
-- **Overall Sentiment**: ${analysis.sentiment}
-- **Messages Analyzed**: ${analysis.messageCount}
-
-## Key Insights
-${analysis.recommendation || 'No specific recommendations generated.'}
-
-## Cognitive Load Analysis
-- **Blocker Load**: ${analysis.cognitiveLoad?.blocker.join(', ') || 'None detected'}
-- **Process Load**: ${analysis.cognitiveLoad?.process.join(', ') || 'None detected'}
-- **Context Load**: ${analysis.cognitiveLoad?.context.join(', ') || 'None detected'}
-
-## Team Status
-- **Response Time**: ${analysis.responseTime}
-- **Channel**: ${analysis.channelName}
-
----
-*Report generated by Cognitive Load Monitor Extension v2.0*
-`;
-}
-
-function startRealTimeMonitoring() {
-    // Update every 30 seconds
-    setInterval(async () => {
-        const data = await chrome.storage.local.get(['currentAnalysis']);
-        if (data.currentAnalysis) {
-            updateUI(data.currentAnalysis);
+    handleRealTimeUpdate(data) {
+        if (document.getElementById('dashboard').classList.contains('active')) {
+            // Update the dashboard with real-time data
+            this.updateMetricCard('stress', data.stressLevel);
+            this.updateMetricCard('productivity', data.productivityScore);
+            
+            // Show a subtle notification
+            this.showNotification('Real-time update received', 'info');
         }
-    }, 30000);
+    }
+
+    startRealTimeUpdates() {
+        if (this.settings.realTimeMonitoring) {
+            // Real-time updates are handled through the message listener
+            console.log('Real-time monitoring active');
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        // Simple notification implementation
+        const notification = document.createElement('div');
+        notification.className = `insight-card ${type === 'error' ? 'warning' : 'info'}`;
+        notification.style.marginTop = '10px';
+        notification.innerHTML = `<p>${message}</p>`;
+        
+        const resultElement = document.getElementById('result');
+        resultElement.insertBefore(notification, resultElement.firstChild);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
+
+    async exportData() {
+        const result = await chrome.storage.local.get(['scanHistory', 'settings', 'alerts']);
+        const dataStr = JSON.stringify(result, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `cognitive-load-data-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        URL.revokeObjectURL(url);
+        this.showNotification('Data exported successfully!', 'success');
+    }
+
+    async clearAllData() {
+        if (confirm('Are you sure you want to clear all stored data? This includes scan history, settings, and alerts.')) {
+            await chrome.storage.local.clear();
+            localStorage.clear();
+            
+            // Reset consent to show dialog again
+            localStorage.removeItem('cognitiveLoadConsent');
+            
+            this.showNotification('All data cleared successfully!', 'success');
+            setTimeout(() => {
+                window.close(); // Close the popup
+            }, 2000);
+        }
+    }
+
+    refreshData() {
+        this.loadAlerts();
+        this.loadSettings();
+        if (this.currentAnalysis) {
+            this.loadAnalyticsData();
+        }
+        this.showNotification('Data refreshed!', 'success');
+    }
+
+    viewFullReport() {
+        if (this.currentAnalysis) {
+            const reportWindow = window.open('', '_blank');
+            reportWindow.document.write(`
+                <html>
+                    <head><title>Cognitive Load Report</title></head>
+                    <body>
+                        <h1>Cognitive Load Analysis Report</h1>
+                        <pre>${JSON.stringify(this.currentAnalysis, null, 2)}</pre>
+                    </body>
+                </html>
+            `);
+        } else {
+            this.showNotification('No analysis data available. Please perform a scan first.', 'warning');
+        }
+    }
+
+    showLastScan() {
+        chrome.storage.local.get(['lastScan']).then(result => {
+            if (result.lastScan) {
+                const resultElement = document.getElementById('result');
+                resultElement.innerHTML = `
+                    <div class="insight-card info">
+                        <p>Ready to scan. Last analysis: ${new Date(result.lastScan.timestamp).toLocaleDateString()}</p>
+                        <p><small>Analyzed ${result.lastScan.messageCount} messages</small></p>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    saveScanToHistory(data, messageCount) {
+        const scanData = {
+            timestamp: new Date().toISOString(),
+            data: data,
+            messageCount: messageCount
+        };
+        
+        chrome.storage.local.set({ lastScan: scanData });
+        
+        // Also add to history
+        chrome.storage.local.get(['scanHistory']).then(result => {
+            const history = result.scanHistory || [];
+            history.unshift(scanData);
+            // Keep only last 50 scans
+            const limitedHistory = history.slice(0, 50);
+            chrome.storage.local.set({ scanHistory: limitedHistory });
+        });
+    }
 }
 
-// Demo data for testing
-function generateDemoData() {
-    return {
-        messageCount: 30,
-        stressLevel: "15.5%",
-        productivityScore: "65.2%",
-        sentiment: "Positive",
-        responseTime: "2.3min",
-        channelName: "#development",
-        cognitiveLoad: {
-            blocker: ['issues', 'waiting'],
-            process: ['notifications', 'zoho'],
-            context: ['projects', 'tasks', 'meetings']
-        },
-        workload: analyzeWorkloadDistribution(),
-        emotionalPulse: {
-            frustration: 25,
-            confidence: 75,
-            collaboration: 82,
-            motivation: 68
-        },
-        predictiveAlerts: [],
-        meetingEffectiveness: {
-            speakingDistribution: { manager: 45, team: 55 },
-            decisionClarity: 7.2,
-            timeEfficiency: 8.1
-        },
-        trends: {
-            productivity: "Improving trend",
-            stress: "Stable",
-            prediction: "Positive outlook",
-            productivityValue: 65,
-            stressValue: 25
-        },
-        gamification: {
-            wellnessScore: 82,
-            weeklyGoal: 'Maintain work-life balance',
-            progress: 4,
-            totalTargets: 5,
-            badges: ['Focus Master', 'Team Player']
-        },
-        analyzedAt: new Date().toISOString()
-    };
-}
+// Initialize the enhanced popup manager when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    new EnhancedPopupManager();
+});

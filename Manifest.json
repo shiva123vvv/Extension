@@ -1,46 +1,59 @@
 {
   "manifest_version": 3,
-  "name": "Cognitive Load Monitor",
+  "name": "Team Cognitive Load Monitor Pro",
   "version": "2.0",
-  "description": "AI-powered team stress & productivity analysis for Zoho Cliq",
-  
-  "permissions": [
-    "activeTab",
-    "storage",
-    "scripting",
-    "alarms"
-  ],
-  
-  "host_permissions": [
-    "https://*.zoho.com/*",
-    "https://*.zohoclip.com/*"
-  ],
+  "description": "AI-powered team stress, productivity & wellness monitoring with advanced analytics",
   
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Cognitive Load Monitor"
-  },
-  
-  "content_scripts": [
-    {
-      "matches": [
-        "https://*.zoho.com/cliq/*",
-        "https://*.zohoclip.com/*"
-      ],
-      "js": ["content.js"],
-      "css": ["styles.css"],
-      "run_at": "document_idle"
+    "default_title": "Cognitive Load Monitor",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "notifications"
   ],
-  
+
+  "host_permissions": [
+    "https://cliq.zoho.com/*"
+  ],
+
   "background": {
     "service_worker": "background.js"
   },
   
+  "content_scripts": [
+    {
+      "matches": ["https://cliq.zoho.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end",
+      "css": ["content.css"]
+    }
+  ],
+  
   "web_accessible_resources": [
     {
-      "resources": ["styles.css"],
-      "matches": ["https://*.zoho.com/*"]
+      "resources": [
+        "privacy.html", 
+        "terms.html",
+        "dashboard.html",
+        "settings.html",
+        "icons/*"
+      ],
+      "matches": ["https://cliq.zoho.com/*"]
     }
   ]
 }
