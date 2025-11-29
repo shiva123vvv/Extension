@@ -1,0 +1,176 @@
+{
+  "commands": [
+    {
+      "name": "wellness-ai",
+      "description": "AI-powered wellness insights and predictions with competition features",
+      "usage": "/wellness-ai [insights|predict|analyze|forecast|heatmap|behavior|social|relationships]",
+      "handler": "handleWellnessAI"
+    },
+    {
+      "name": "burnout-predict", 
+      "description": "Predict burnout risk and get preventive measures with behavioral analysis",
+      "usage": "/burnout-predict [user|team|timeframe|detailed]",
+      "handler": "handleBurnoutPrediction"
+    },
+    {
+      "name": "mood-poll",
+      "description": "Anonymous team mood check-in and social temperature analytics",
+      "usage": "/mood-poll [start|results|history|trends]",
+      "handler": "handleMoodPoll"
+    },
+    {
+      "name": "meeting-analyzer",
+      "description": "Smart meeting analysis and optimization with overload detection",
+      "usage": "/meeting-analyzer [analyze|optimize|report|heatmap]",
+      "handler": "handleMeetingAnalysis"
+    },
+    {
+      "name": "task-overload",
+      "description": "Detect workload imbalance and suggest AI-powered redistribution",
+      "usage": "/task-overload [analyze|redistribute|balance|optimize]",
+      "handler": "handleTaskOverload"
+    },
+    {
+      "name": "focus-mode",
+      "description": "Focus time recommendations and productivity analytics",
+      "usage": "/focus-mode [recommend|schedule|analytics|optimize]",
+      "handler": "handleFocusMode"
+    },
+    {
+      "name": "wellness-gamification",
+      "description": "Wellness challenges, points, leaderboards, and achievements",
+      "usage": "/wellness-gamification [challenge|leaderboard|points|achievements|streaks]",
+      "handler": "handleGamification"
+    },
+    {
+      "name": "heatmap",
+      "description": "Visual wellness heatmaps and patterns for stress and productivity",
+      "usage": "/heatmap [stress|productivity|engagement|social|behavioral|all]",
+      "handler": "handleHeatmap"
+    },
+    {
+      "name": "ai-routine",
+      "description": "AI-generated personalized daily routines with gamification",
+      "usage": "/ai-routine [generate|optimize|implement|track]",
+      "handler": "handleAIRoutine"
+    },
+    {
+      "name": "toxic-filter",
+      "description": "Toxic message detection and wellness support system",
+      "usage": "/toxic-filter [report|analytics|support|settings]",
+      "handler": "handleToxicFilter"
+    },
+    {
+      "name": "behavior-analysis",
+      "description": "Behavioral pattern recognition for team mental health",
+      "usage": "/behavior-analysis [patterns|risks|interventions|report]",
+      "handler": "handleBehaviorAnalysis"
+    },
+    {
+      "name": "social-temperature",
+      "description": "Social temperature monitoring and team mood analytics",
+      "usage": "/social-temperature [current|trend|mood|environment]",
+      "handler": "handleSocialTemperature"
+    },
+    {
+      "name": "relationship-health",
+      "description": "Relationship health scoring and team dynamics analysis",
+      "usage": "/relationship-health [score|metrics|dynamics|improvements]",
+      "handler": "handleRelationshipHealth"
+    },
+    {
+      "name": "intelligent-nudges",
+      "description": "Configure and manage intelligent wellness nudges",
+      "usage": "/intelligent-nudges [settings|frequency|types|pause]",
+      "handler": "handleIntelligentNudges"
+    },
+    {
+      "name": "wellness-newsfeed",
+      "description": "AI-generated weekly wellness insights and trends",
+      "usage": "/wellness-newsfeed [current|weekly|trends|insights]",
+      "handler": "handleWellnessNewsfeed"
+    },
+    {
+      "name": "wellness",
+      "description": "Get comprehensive team wellness insights and reports",
+      "usage": "/wellness [report|check|tips|status|dashboard]",
+      "handler": "handleWellnessCommand"
+    },
+    {
+      "name": "stress-check",
+      "description": "Quick team stress assessment and management tips",
+      "usage": "/stress-check [quick|detailed|management|resources]",
+      "handler": "handleStressCheck"
+    },
+    {
+      "name": "productivity",
+      "description": "Team productivity analysis and optimization tips",
+      "usage": "/productivity [analyze|tips|report|optimize]",
+      "handler": "handleProductivityCommand"
+    },
+    {
+      "name": "wellness-setup",
+      "description": "Configure wellness monitoring, alerts, and competition features",
+      "usage": "/wellness-setup [alerts|schedule|preferences|features]",
+      "handler": "handleWellnessSetup"
+    },
+    {
+      "name": "competition-features",
+      "description": "Access all competition-winning wellness features",
+      "usage": "/competition-features [list|enable|dashboard|demo]",
+      "handler": "handleCompetitionFeatures"
+    }
+  ],
+  "competition_commands": [
+    {
+      "name": "burnout-heatmap",
+      "description": "Visual burnout risk heatmap with predictive analytics",
+      "category": "competition"
+    },
+    {
+      "name": "behavioral-insights", 
+      "description": "Deep behavioral pattern analysis and interventions",
+      "category": "competition"
+    },
+    {
+      "name": "social-dashboard",
+      "description": "Social temperature and team mood visualization",
+      "category": "competition"
+    },
+    {
+      "name": "relationship-metrics",
+      "description": "Team relationship health metrics and improvements",
+      "category": "competition"
+    },
+    {
+      "name": "gamification-hub",
+      "description": "Complete gamification system with challenges and rewards",
+      "category": "competition"
+    },
+    {
+      "name": "ai-routine-builder",
+      "description": "AI-powered personalized routine generator",
+      "category": "competition"
+    },
+    {
+      "name": "meeting-optimizer",
+      "description": "Smart meeting analysis and optimization engine",
+      "category": "competition"
+    },
+    {
+      "name": "nudge-manager",
+      "description": "Intelligent wellness nudge configuration system",
+      "category": "competition"
+    },
+    {
+      "name": "toxic-pattern-detector",
+      "description": "Advanced toxic message detection and support",
+      "category": "competition"
+    },
+    {
+      "name": "wellness-news-generator",
+      "description": "AI-generated weekly wellness insights feed",
+      "category": "competition"
+    }
+  ]
+}

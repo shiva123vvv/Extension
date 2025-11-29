@@ -1,0 +1,71 @@
+{
+  "name": "Team Wellness AI Pro+",
+  "description": "AI-powered team wellness with burnout prediction, gamification, heatmaps and real-time interventions.",
+  "version": "3.0",
+  "author": "Wellness AI Team",
+
+  "bots": [
+    {
+      "name": "WellnessBotPro",
+      "display_name": "Wellness Bot Pro+",
+      "description": "Advanced AI wellness bot",
+      "handler": "bot.js"
+    }
+  ],
+
+  "widgets": [
+    {
+      "name": "WellnessDashboardPro",
+      "display_name": "Wellness Dashboard Pro",
+      "description": "AI-powered analytics dashboard",
+      "handler": "widget.js"
+    }
+  ],
+
+  "functions": [
+    {
+      "name": "analyzeTeamHealth",
+      "handler": "functions.js"
+    },
+    {
+      "name": "generateWellnessReport",
+      "handler": "functions.js"
+    },
+    {
+      "name": "predictBurnoutRisk",
+      "handler": "functions.js"
+    },
+    {
+      "name": "analyzeMeetingEfficiency",
+      "handler": "functions.js"
+    },
+    {
+      "name": "generatePersonalizedRoutines",
+      "handler": "functions.js"
+    },
+    {
+      "name": "analyzeBehavioralPatterns",
+      "handler": "functions.js"
+    },
+    {
+      "name": "analyzeSocialTemperature",
+      "handler": "functions.js"
+    },
+    {
+      "name": "analyzeRelationshipHealth",
+      "handler": "functions.js"
+    },
+    {
+      "name": "generateWellnessHeatmap",
+      "handler": "functions.js"
+    },
+    {
+      "name": "getGamificationData",
+      "handler": "functions.js"
+    }
+  ],
+
+  "commands": {
+    "file": "commands.json"
+  }
+}
