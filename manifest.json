@@ -2,6 +2,7 @@
   "name": "Team Wellness AI Pro+",
   "description": "AI-powered team wellness with burnout prediction, gamification, heatmaps and real-time interventions.",
   "version": "3.0",
+  "type": "plugin",
   "author": "Wellness AI Team",
 
   "bots": [
@@ -9,7 +10,7 @@
       "name": "WellnessBotPro",
       "display_name": "Wellness Bot Pro+",
       "description": "Advanced AI wellness bot",
-      "handler": "bot.js"
+      "location": "bot/bot.js"
     }
   ],
 
@@ -18,54 +19,53 @@
       "name": "WellnessDashboardPro",
       "display_name": "Wellness Dashboard Pro",
       "description": "AI-powered analytics dashboard",
-      "handler": "widget.js"
+      "location": "widgets/widget.js"
     }
   ],
 
   "functions": [
     {
       "name": "analyzeTeamHealth",
-      "handler": "functions.js"
+      "description": "Analyzes team stress & performance",
+      "handler": "functions/functions.js"
     },
     {
       "name": "generateWellnessReport",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     },
     {
       "name": "predictBurnoutRisk",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     },
     {
       "name": "analyzeMeetingEfficiency",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     },
     {
       "name": "generatePersonalizedRoutines",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     },
     {
       "name": "analyzeBehavioralPatterns",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     },
     {
       "name": "analyzeSocialTemperature",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     },
     {
       "name": "analyzeRelationshipHealth",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     },
     {
       "name": "generateWellnessHeatmap",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     },
     {
       "name": "getGamificationData",
-      "handler": "functions.js"
+      "handler": "functions/functions.js"
     }
   ],
 
-  "commands": {
-    "file": "commands.json"
-  }
+  "commands": "commands/commands.json"
 }
